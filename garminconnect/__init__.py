@@ -625,7 +625,16 @@ class Garmin:
                         self.password,
                         return_on_mfa=self.return_on_mfa,
                     )
-                    # In MFA early-return mode, profile/settings are not loaded yet
+                    if mfa_status == "needs_mfa":
+                        # MFA is actually pending — profile/settings will be
+                        # loaded later, in resume_login().
+                        return mfa_status, _legacy_token
+                    # No MFA was needed after all; persist tokens and load
+                    # profile/settings now, same as the non-return_on_mfa path.
+                    if tokenstore_path is not None:
+                        with contextlib.suppress(Exception):
+                            self.client.dump(tokenstore_path)
+                    self._load_profile_and_settings()
                     return mfa_status, _legacy_token
                 if tokenstore_path is not None:
                     self.client._tokenstore_path = tokenstore_path
